@@ -1,0 +1,97 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #101a35, #243b68);
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+}
+
+.login-card h1 {
+  color: #243b68;
+  text-align: center;
+  font-size: 32px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #777;
+  margin: 10px 0 35px;
+  font-size: 13px;
+}
+
+.login-card h2 {
+  color: #222;
+  margin-bottom: 8px;
+}
+
+.description {
+  color: #777;
+  margin-bottom: 25px;
+}
+
+form label {
+  display: block;
+  margin: 15px 0 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+form input {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  outline: none;
+}
+
+form input:focus {
+  border-color: #243b68;
+}
+
+form button {
+  width: 100%;
+  padding: 13px;
+  margin-top: 25px;
+  background: #243b68;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+form button:hover {
+  background: #101a35;
+}
+
+.register {
+  text-align: center;
+  margin-top: 25px;
+  font-size: 14px;
+}
+
+.register a {
+  color: #243b68;
+  font-weight: bold;
+  text-decoration: none;
+}
