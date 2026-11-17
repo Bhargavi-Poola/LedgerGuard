@@ -6,7 +6,10 @@ require('dotenv').config();
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
+const tenantRoutes = require('./routes/tenantRoutes');
+const tenantRecordRoutes = require('./routes/tenantRecordRoutes');
 
+// Initialize Express App
 const app = express();
 
 // Middleware
@@ -36,12 +39,22 @@ app.use('/api/auth', authRoutes);
 // Protected Routes
 app.use('/api', protectedRoutes);
 
+// Tenant Routes
+app.use('/api/tenants', tenantRoutes);
+
+// Tenant Record Routes
+app.use('/api/tenant-records', tenantRecordRoutes);
+
 // Server Port
 const PORT = process.env.PORT || 5000;
 
 // Connect MongoDB and Start Server
 async function startServer() {
     try {
+        if (!process.env.MONGO_URI) {
+            throw new Error('MONGO_URI is missing in .env file');
+        }
+
         await mongoose.connect(process.env.MONGO_URI);
 
         console.log('MongoDB connected successfully!');
