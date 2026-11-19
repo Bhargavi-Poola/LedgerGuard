@@ -3,6 +3,9 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
+// Import Redis Configuration
+const { connectRedis } = require('./config/redis');
+
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
@@ -48,23 +51,32 @@ app.use('/api/tenant-records', tenantRecordRoutes);
 // Server Port
 const PORT = process.env.PORT || 5000;
 
-// Connect MongoDB and Start Server
+// Connect MongoDB, Redis and Start Server
 async function startServer() {
     try {
         if (!process.env.MONGO_URI) {
             throw new Error('MONGO_URI is missing in .env file');
         }
 
-        await mongoose.connect(process.env.MONGO_URI);
+        if (!process.env.REDIS_URL) {
+            throw new Error('REDIS_URL is missing in .env file');
+        }
 
+        // Connect MongoDB
+        await mongoose.connect(process.env.MONGO_URI);
         console.log('MongoDB connected successfully!');
 
+        // Connect Redis
+        await connectRedis();
+        console.log('Redis connection established!');
+
+        // Start Express Server
         app.listen(PORT, () => {
             console.log(`LedgerGuard server running on port ${PORT}`);
         });
 
     } catch (error) {
-        console.error('MongoDB connection failed:', error.message);
+        console.error('Server startup failed:', error.message);
         process.exit(1);
     }
 }
