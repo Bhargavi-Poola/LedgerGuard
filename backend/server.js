@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
-
+const ledgerRoutes = require('./routes/ledgerRoutes');
 // Import Redis Configuration
 const { connectRedis } = require('./config/redis');
 
@@ -47,7 +47,8 @@ app.use('/api/tenants', tenantRoutes);
 
 // Tenant Record Routes
 app.use('/api/tenant-records', tenantRecordRoutes);
-
+// Ledger Routes
+app.use('/api/ledger', ledgerRoutes);
 // Server Port
 const PORT = process.env.PORT || 5000;
 
