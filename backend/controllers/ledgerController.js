@@ -4,8 +4,8 @@ const ledgerSchema = require('../models/Ledger');
 const { acquireLock, releaseLock } = require('../config/distributedLock');
 
 // Calculate current balance
-async function calculateBalance(Ledger) {
-    const result = await Ledger.aggregate([
+async function calculateBalance(Ledger, session = null) {
+    let aggregation = Ledger.aggregate([
         {
             $group: {
                 _id: null,
@@ -33,6 +33,12 @@ async function calculateBalance(Ledger) {
         }
     ]);
 
+    if (session) {
+        aggregation = aggregation.session(session);
+    }
+
+    const result = await aggregation;
+
     const credits = result[0]?.totalCredits || 0;
     const debits = result[0]?.totalDebits || 0;
 
@@ -46,10 +52,12 @@ async function calculateBalance(Ledger) {
 // Create Credit or Debit Transaction
 async function createTransaction(req, res, type) {
     let lock = null;
+    let session = null;
 
     try {
         const { amount, description } = req.body;
 
+        // Validate authenticated tenant
         if (!req.user || !req.user.tenantId) {
             return res.status(401).json({
                 success: false,
@@ -57,6 +65,7 @@ async function createTransaction(req, res, type) {
             });
         }
 
+        // Validate amount
         if (
             typeof amount !== 'number' ||
             !Number.isFinite(amount) ||
@@ -69,6 +78,7 @@ async function createTransaction(req, res, type) {
             });
         }
 
+        // Validate description
         if (!description || !description.trim()) {
             return res.status(400).json({
                 success: false,
@@ -81,7 +91,7 @@ async function createTransaction(req, res, type) {
             ledgerSchema
         );
 
-        // Prevent simultaneous balance updates for this tenant
+        // Acquire distributed lock
         lock = await acquireLock(`ledger:${req.user.tenantId}`);
 
         if (!lock) {
@@ -91,9 +101,23 @@ async function createTransaction(req, res, type) {
             });
         }
 
-        const current = await calculateBalance(Ledger);
+        // Start MongoDB session
+        session = await req.tenantConnection.startSession();
+        // Start transaction
+        session.startTransaction();
 
+        console.log('MongoDB transaction started');
+
+        // Calculate current balance inside transaction
+        const current = await calculateBalance(Ledger, session);
+
+        // Check sufficient balance for debit
         if (type === 'DEBIT' && current.balance < amount) {
+
+            await session.abortTransaction();
+
+            console.log('Transaction aborted: Insufficient balance');
+
             return res.status(400).json({
                 success: false,
                 message: 'Insufficient balance',
@@ -101,16 +125,32 @@ async function createTransaction(req, res, type) {
             });
         }
 
-        const transaction = await Ledger.create({
-            transactionId: `txn_${randomUUID()}`,
-            tenantId: req.user.tenantId,
-            eventId: req.eventId || `evt_${randomUUID()}`,
-            type,
-            amount,
-            description: description.trim()
-        });
+        // Create transaction inside MongoDB session
+        const createdTransactions = await Ledger.create(
+            [
+                {
+                    transactionId: `txn_${randomUUID()}`,
+                    tenantId: req.user.tenantId,
+                    eventId: req.eventId || `evt_${randomUUID()}`,
+                    type,
+                    amount,
+                    description: description.trim()
+                }
+            ],
+            {
+                session
+            }
+        );
 
-        const updated = await calculateBalance(Ledger);
+        const transaction = createdTransactions[0];
+
+        // Calculate updated balance inside transaction
+        const updated = await calculateBalance(Ledger, session);
+
+        // Commit transaction
+        await session.commitTransaction();
+
+        console.log('MongoDB transaction committed successfully');
 
         return res.status(201).json({
             success: true,
@@ -120,6 +160,17 @@ async function createTransaction(req, res, type) {
         });
 
     } catch (error) {
+
+        // Rollback transaction if an error occurs
+        if (session && session.inTransaction()) {
+            try {
+                await session.abortTransaction();
+                console.log('MongoDB transaction rolled back');
+            } catch (rollbackError) {
+                console.error('Rollback Error:', rollbackError.message);
+            }
+        }
+
         console.error('Ledger Transaction Error:', error.message);
 
         return res.status(500).json({
@@ -128,9 +179,22 @@ async function createTransaction(req, res, type) {
         });
 
     } finally {
+
+        // End MongoDB session
+        if (session) {
+            try {
+                await session.endSession();
+                console.log('MongoDB session ended');
+            } catch (error) {
+                console.error('Session End Error:', error.message);
+            }
+        }
+
+        // Release distributed lock
         if (lock) {
             try {
                 await releaseLock(lock);
+                console.log('Distributed lock released');
             } catch (error) {
                 console.error('Lock Release Error:', error.message);
             }
