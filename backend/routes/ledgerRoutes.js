@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
+const { getAnalytics } = require('../controllers/analyticsController');
+
 const verifyToken = require('../middleware/authMiddleware');
 const identifyTenant = require('../middleware/tenantMiddleware');
 const idempotencyMiddleware = require('../middleware/idempotencyMiddleware');
@@ -44,6 +46,14 @@ router.get(
     verifyToken,
     identifyTenant,
     getTransactions
+);
+
+// Get Ledger Analytics
+router.get(
+    '/analytics',
+    verifyToken,
+    identifyTenant,
+    getAnalytics
 );
 
 module.exports = router;
