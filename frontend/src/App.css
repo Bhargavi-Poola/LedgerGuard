@@ -348,3 +348,92 @@ form button:hover {
     grid-template-columns: 1fr;
   }
 }
+/* Analytics Date Range Filter */
+
+.analytics-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 15px;
+  margin: 20px 0 25px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-field label {
+  font-weight: 600;
+  color: #334155;
+  font-size: 14px;
+}
+
+.filter-field input {
+  padding: 11px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  background: white;
+  outline: none;
+}
+
+.filter-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.analytics-filter button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+  transition: 0.2s;
+}
+
+.analytics-filter button:hover {
+  background: #1d4ed8;
+}
+
+.analytics-filter button:last-child {
+  background: #64748b;
+}
+
+.analytics-filter button:last-child:hover {
+  background: #475569;
+}
+
+.analytics-filter button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+  .analytics-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-field,
+  .filter-field input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .analytics-filter button {
+    width: 100%;
+  }
+}

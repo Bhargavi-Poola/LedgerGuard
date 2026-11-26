@@ -89,6 +89,11 @@ function App() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Analytics Date Filter States
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [filterLoading, setFilterLoading] = useState(false)
+
   // Login API
   const handleLogin = async (e: React.FormEvent) => {
 
@@ -279,6 +284,79 @@ function App() {
     }
   }
 
+  // Apply Analytics Date Filter
+  const applyDateFilter = async () => {
+
+    setError('')
+    setMessage('')
+
+    if (!startDate || !endDate) {
+
+      setError('Please select both start and end dates')
+      return
+
+    }
+
+    if (startDate > endDate) {
+
+      setError('Start date cannot be after end date')
+      return
+
+    }
+
+    setFilterLoading(true)
+
+    try {
+
+      const response = await fetch(
+        `${API}/ledger/analytics?startDate=${startDate}&endDate=${endDate}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+
+        throw new Error(data.message || 'Failed to fetch analytics')
+
+      }
+
+      setAnalytics(data.analytics)
+
+      setMessage('Analytics filtered successfully!')
+
+    } catch (err) {
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Analytics filtering failed'
+      )
+
+    } finally {
+
+      setFilterLoading(false)
+
+    }
+  }
+
+  // Reset Analytics Date Filter
+  const resetDateFilter = async () => {
+
+    setStartDate('')
+    setEndDate('')
+
+    setError('')
+    setMessage('')
+
+    await loadDashboard()
+
+  }
+
   // Monthly Bar Chart Data
   const monthlyChartData = {
 
@@ -400,6 +478,9 @@ function App() {
       totalTransactions: 0,
       monthly: []
     })
+
+    setStartDate('')
+    setEndDate('')
 
     setMessage('')
     setError('')
@@ -558,6 +639,54 @@ function App() {
         <section className="transaction-section">
 
           <h2>Financial Analytics</h2>
+
+          {/* Analytics Date Range Filter */}
+          <div className="analytics-filter">
+
+            <div className="filter-field">
+
+              <label htmlFor="startDate">Start Date</label>
+
+              <input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+
+            </div>
+
+            <div className="filter-field">
+
+              <label htmlFor="endDate">End Date</label>
+
+              <input
+                id="endDate"
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+
+            </div>
+
+            <button
+              type="button"
+              onClick={applyDateFilter}
+              disabled={filterLoading}
+            >
+              {filterLoading ? 'Applying...' : 'Apply Filter'}
+            </button>
+
+            <button
+              type="button"
+              onClick={resetDateFilter}
+              disabled={filterLoading}
+            >
+              Reset
+            </button>
+
+          </div>
 
           <div className="balance-cards">
 
