@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -56,6 +57,17 @@ interface Analytics {
   }[]
 }
 
+// Monthly Usage Interface
+interface Usage {
+  month: string
+  monthlyLimit: number
+  totalExpenditure: number
+  remainingLimit: number
+  usagePercentage: number
+  transactionCount: number
+  status: string
+}
+
 function App() {
 
   const [token, setToken] = useState(
@@ -80,6 +92,18 @@ function App() {
     totalTransactions: 0,
     monthly: []
   })
+
+  const [usage, setUsage] = useState<Usage>({
+    month: '',
+    monthlyLimit: 0,
+    totalExpenditure: 0,
+    remainingLimit: 0,
+    usagePercentage: 0,
+    transactionCount: 0,
+    status: 'Normal'
+  })
+
+  const [limitInput, setLimitInput] = useState('')
 
   const [type, setType] = useState<'CREDIT' | 'DEBIT'>('CREDIT')
   const [amount, setAmount] = useState('')
@@ -151,31 +175,37 @@ function App() {
       const [
         balanceResponse,
         transactionResponse,
-        analyticsResponse
+        analyticsResponse,
+        usageResponse
       ] = await Promise.all([
 
         fetch(`${API}/ledger/balance`, { headers }),
 
         fetch(`${API}/ledger/transactions`, { headers }),
 
-        fetch(`${API}/ledger/analytics`, { headers })
+        fetch(`${API}/ledger/analytics`, { headers }),
+
+        fetch(`${API}/ledger/usage`, { headers })
 
       ])
 
       const balanceData = await balanceResponse.json()
       const transactionData = await transactionResponse.json()
       const analyticsData = await analyticsResponse.json()
+      const usageData = await usageResponse.json()
 
       if (
         !balanceResponse.ok ||
         !transactionResponse.ok ||
-        !analyticsResponse.ok
+        !analyticsResponse.ok ||
+        !usageResponse.ok
       ) {
 
         throw new Error(
           balanceData.message ||
           transactionData.message ||
           analyticsData.message ||
+          usageData.message ||
           'Unable to load dashboard'
         )
 
@@ -186,6 +216,8 @@ function App() {
       setTransactions(transactionData.transactions)
 
       setAnalytics(analyticsData.analytics)
+
+      setUsage(usageData.usage)
 
     } catch (err) {
 
@@ -266,7 +298,7 @@ function App() {
       setAmount('')
       setDescription('')
 
-      // Refresh Balance, Transactions and Analytics
+      // Refresh Balance, Transactions, Analytics and Usage
       await loadDashboard()
 
     } catch (err) {
@@ -355,6 +387,69 @@ function App() {
 
     await loadDashboard()
 
+  }
+
+  // Update Monthly Spending Limit
+  const handleLimitUpdate = async (e: React.FormEvent) => {
+
+    e.preventDefault()
+
+    setError('')
+    setMessage('')
+
+    const numericLimit = Number(limitInput)
+
+    if (
+      limitInput.trim() === '' ||
+      !Number.isFinite(numericLimit) ||
+      numericLimit < 0
+    ) {
+      setError('Enter a valid monthly limit')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+
+      const response = await fetch(`${API}/tenants/limit`, {
+        method: 'PUT',
+
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+
+        body: JSON.stringify({
+          monthlyLimit: numericLimit
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update monthly limit')
+      }
+
+      setMessage('Monthly spending limit updated successfully!')
+
+      setLimitInput('')
+
+      await loadDashboard()
+
+    } catch (err) {
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Monthly limit update failed'
+      )
+
+    } finally {
+
+      setLoading(false)
+
+    }
   }
 
   // Monthly Bar Chart Data
@@ -456,6 +551,19 @@ function App() {
 
   }
 
+  // Usage Progress Bar
+  const progressWidth = Math.min(
+    Math.max(usage.usagePercentage, 0),
+    100
+  )
+
+  const usageStatusClass =
+    usage.status === 'Limit Exceeded'
+      ? 'usage-danger'
+      : usage.status === 'Warning'
+        ? 'usage-warning'
+        : 'usage-normal'
+
   // Logout
   const handleLogout = () => {
 
@@ -479,6 +587,17 @@ function App() {
       monthly: []
     })
 
+    setUsage({
+      month: '',
+      monthlyLimit: 0,
+      totalExpenditure: 0,
+      remainingLimit: 0,
+      usagePercentage: 0,
+      transactionCount: 0,
+      status: 'Normal'
+    })
+
+    setLimitInput('')
     setStartDate('')
     setEndDate('')
 
@@ -634,6 +753,129 @@ function App() {
           </div>
 
         </div>
+
+        {/* Monthly Resource Usage */}
+        <section className="transaction-section usage-section">
+
+          <h2>Monthly Resource Usage</h2>
+
+          <p className="usage-month">
+            {usage.month}
+          </p>
+
+          <div className="balance-cards">
+
+            <div className="balance-card total">
+
+              <h3>Monthly Spending Limit</h3>
+
+              <h2>
+                ₹{usage.monthlyLimit.toLocaleString('en-IN')}
+              </h2>
+
+            </div>
+
+            <div className="balance-card debit">
+
+              <h3>Total Expenditure</h3>
+
+              <h2>
+                ₹{usage.totalExpenditure.toLocaleString('en-IN')}
+              </h2>
+
+            </div>
+
+            <div className="balance-card credit">
+
+              <h3>Remaining Limit</h3>
+
+              <h2>
+                ₹{usage.remainingLimit.toLocaleString('en-IN')}
+              </h2>
+
+            </div>
+
+          </div>
+
+          <div className="usage-progress-container">
+
+            <div className="usage-progress-heading">
+
+              <h3>Monthly Limit Consumption</h3>
+
+              <span>
+                {usage.usagePercentage}%
+              </span>
+
+            </div>
+
+            <div className="usage-progress-track">
+
+              <div
+                className={`usage-progress-fill ${usageStatusClass}`}
+                style={{ width: `${progressWidth}%` }}
+              />
+
+            </div>
+
+            <div className="usage-details">
+
+              <span>
+                {usage.transactionCount} transactions this month
+              </span>
+
+              <strong className={usageStatusClass}>
+                {usage.status}
+              </strong>
+
+            </div>
+
+            {usage.usagePercentage >= 80 && (
+              <p className={`usage-alert ${usageStatusClass}`}>
+                {usage.usagePercentage >= 100
+                  ? 'Monthly spending limit has been exceeded!'
+                  : 'Warning: You have used at least 80% of your monthly limit.'}
+              </p>
+            )}
+
+          </div>
+
+          {/* Admin Monthly Limit Update */}
+          <div className="limit-update-section">
+
+            <h3>Update Monthly Spending Limit</h3>
+
+            <p>
+              Only organization administrators can update this limit.
+            </p>
+
+            <form
+              className="limit-update-form"
+              onSubmit={handleLimitUpdate}
+            >
+
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Enter new monthly limit"
+                value={limitInput}
+                onChange={(e) => setLimitInput(e.target.value)}
+                required
+              />
+
+              <button
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? 'Updating...' : 'Update Limit'}
+              </button>
+
+            </form>
+
+          </div>
+
+        </section>
 
         {/* Analytics Summary */}
         <section className="transaction-section">

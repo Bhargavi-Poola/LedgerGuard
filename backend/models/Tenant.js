@@ -26,6 +26,13 @@ const tenantSchema = new mongoose.Schema(
             type: String,
             enum: ['active', 'suspended'],
             default: 'active'
+        },
+
+        monthlyLimit: {
+            type: Number,
+            required: true,
+            default: 10000,
+            min: 0
         }
     },
     {

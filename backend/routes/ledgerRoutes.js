@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { getAnalytics } = require('../controllers/analyticsController');
-
+const { getMonthlyUsage } = require('../controllers/usageController');
 const verifyToken = require('../middleware/authMiddleware');
 const identifyTenant = require('../middleware/tenantMiddleware');
 const idempotencyMiddleware = require('../middleware/idempotencyMiddleware');
@@ -55,5 +55,11 @@ router.get(
     identifyTenant,
     getAnalytics
 );
-
+// Get Monthly Resource Usage
+router.get(
+    '/usage',
+    verifyToken,
+    identifyTenant,
+    getMonthlyUsage
+);
 module.exports = router;
